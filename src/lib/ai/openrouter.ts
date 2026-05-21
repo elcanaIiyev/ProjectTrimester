@@ -9,4 +9,4 @@ export const openrouter = createOpenAI({
   },
 });
 
-export const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
+export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash:free";
