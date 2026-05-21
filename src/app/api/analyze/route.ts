@@ -42,11 +42,17 @@ export async function POST(request: Request) {
   const extractedCVs = await extractTextFromPDFs(pdfFiles);
 
   if (!extractedCVs.length) {
+    console.error("[analyze] All PDFs failed extraction. Files:", pdfFiles.map(f => f.fileName));
     return NextResponse.json(
-      { error: "Could not extract text from any of the uploaded PDFs" },
+      {
+        error:
+          "Could not extract text from the uploaded PDFs. Make sure the files are text-based PDFs (not scanned images). Check the server logs for details.",
+      },
       { status: 422 }
     );
   }
+
+  console.log(`[analyze] Extracted ${extractedCVs.length}/${pdfFiles.length} PDFs successfully`);
 
   const rankedResults = await analyzeCVsAgainstJob(extractedCVs, jobDescription);
 
