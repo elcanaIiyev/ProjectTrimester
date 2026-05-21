@@ -89,17 +89,24 @@ export function UploadTool() {
       formData.append("jobDescription", jobDescription);
 
       const res = await fetch("/api/analyze", { method: "POST", body: formData });
-      const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error ?? "Analysis failed");
+      let data: { error?: string; results?: CVAnalysisResult[]; job_id?: string };
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server error (${res.status}) — check the terminal logs`);
       }
 
+      if (!res.ok) {
+        throw new Error(data.error ?? `Analysis failed (${res.status})`);
+      }
+
+      const results = data.results ?? [];
       clearInterval(interval);
       setProgress(100);
-      setResults(data.results);
+      setResults(results);
       setJobId(data.job_id);
-      toast.success(`Analysis complete — ${data.results.length} candidates ranked`);
+      toast.success(`Analysis complete — ${results.length} candidates ranked`);
     } catch (err) {
       clearInterval(interval);
       toast.error(err instanceof Error ? err.message : "Something went wrong");
