@@ -4,6 +4,7 @@ export interface ExtractedCV {
   fileName: string;
   text: string;
   pageCount: number;
+  rawBuffer?: Buffer;
 }
 
 export async function extractTextFromPDF(
@@ -16,6 +17,7 @@ export async function extractTextFromPDF(
     fileName,
     text: data.text.trim(),
     pageCount: 0,
+    rawBuffer: buffer,
   };
 }
 
@@ -26,15 +28,17 @@ export async function extractTextFromPDFs(
     files.map(({ buffer, fileName }) => extractTextFromPDF(buffer, fileName))
   );
 
-  return results
-    .map((result, i) => {
-      if (result.status === "fulfilled") return result.value;
-      console.error(`Failed to parse ${files[i].fileName}:`, result.reason);
-      return {
-        fileName: files[i].fileName,
-        text: "",
-        pageCount: 0,
-      };
-    })
-    .filter((cv) => cv.text.length > 0);
+  const extracted: ExtractedCV[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === "fulfilled") {
+      if (result.value.text.length === 0) {
+        console.warn(`[pdf-extract] ${files[i].fileName}: no text found — will use vision mode`);
+      }
+      extracted.push(result.value);
+    } else {
+      console.error(`[pdf-extract] ${files[i].fileName}: ${String(result.reason)}`);
+    }
+  }
+  return extracted;
 }
