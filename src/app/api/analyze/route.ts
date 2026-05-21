@@ -1,5 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { extractTextFromPDFs } from "@/lib/pdf/extract";
+import { analyzeCVsAgainstJob } from "@/lib/ai/analyze";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -12,13 +14,76 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // TODO: implement AI analysis logic
-  // 1. Parse multipart form data (CVs + job description)
-  // 2. Extract text from each PDF
-  // 3. Send to OpenRouter via Vercel AI SDK
-  // 4. Parse and rank results
-  // 5. Store results in Supabase
-  // 6. Return ranked results
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+  }
 
-  return NextResponse.json({ message: "Analysis endpoint placeholder" }, { status: 200 });
+  const jobDescription = formData.get("jobDescription");
+  const cvFiles = formData.getAll("cvs") as File[];
+
+  if (!jobDescription || typeof jobDescription !== "string" || !jobDescription.trim()) {
+    return NextResponse.json({ error: "Job description is required" }, { status: 400 });
+  }
+
+  if (!cvFiles.length) {
+    return NextResponse.json({ error: "At least one CV is required" }, { status: 400 });
+  }
+
+  const pdfFiles = await Promise.all(
+    cvFiles.map(async (file) => ({
+      buffer: Buffer.from(await file.arrayBuffer()),
+      fileName: file.name,
+    }))
+  );
+
+  const extractedCVs = await extractTextFromPDFs(pdfFiles);
+
+  if (!extractedCVs.length) {
+    return NextResponse.json(
+      { error: "Could not extract text from any of the uploaded PDFs" },
+      { status: 422 }
+    );
+  }
+
+  const rankedResults = await analyzeCVsAgainstJob(extractedCVs, jobDescription);
+
+  const { data: job, error: jobError } = await supabase
+    .from("analysis_jobs")
+    .insert({
+      user_id: user.id,
+      job_description: jobDescription,
+      status: "completed",
+      cv_count: extractedCVs.length,
+      completed_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (jobError) {
+    console.error("Failed to save analysis job:", jobError);
+    return NextResponse.json({ results: rankedResults });
+  }
+
+  await supabase.from("cv_results").insert(
+    rankedResults.map((r) => ({
+      job_id: job.id,
+      user_id: user.id,
+      candidate_name: r.candidate_name,
+      file_name: r.file_name,
+      match_score: r.match_score,
+      summary: r.summary,
+      strengths: r.strengths,
+      weaknesses: r.weaknesses,
+      rank: r.rank,
+      raw_text: extractedCVs.find((cv) => cv.fileName === r.file_name)?.text ?? "",
+    }))
+  );
+
+  return NextResponse.json({
+    job_id: job.id,
+    results: rankedResults,
+  });
 }
