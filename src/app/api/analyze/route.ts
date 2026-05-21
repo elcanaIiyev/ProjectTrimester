@@ -1,9 +1,12 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extractTextFromPDFs } from "@/lib/pdf/extract";
 import { analyzeCVsAgainstJob } from "@/lib/ai/analyze";
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient();
 
   const {
@@ -92,4 +95,11 @@ export async function POST(request: Request) {
     job_id: job.id,
     results: rankedResults,
   });
+  } catch (err) {
+    console.error("[analyze] Unhandled error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
