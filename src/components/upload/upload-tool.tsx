@@ -13,7 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResultsTable } from "@/components/results/results-table";
 import type { UploadedFile } from "@/types";
+import type { CVAnalysisResult } from "@/lib/ai/analyze";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,6 +28,8 @@ export function UploadTool() {
   const [jobDescription, setJobDescription] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState<CVAnalysisResult[]>([]);
+  const [jobId, setJobId] = useState<string | undefined>();
 
   const onDrop = useCallback((accepted: File[], rejected: FileRejection[]) => {
     if (rejected.length > 0) {
@@ -71,31 +75,37 @@ export function UploadTool() {
     }
 
     setIsAnalyzing(true);
+    setResults([]);
+    setJobId(undefined);
     setProgress(10);
 
-    // TODO: implement actual analysis call
-    // const formData = new FormData();
-    // files.forEach((f) => formData.append("cvs", f.file));
-    // formData.append("jobDescription", jobDescription);
-    // const res = await fetch("/api/analyze", { method: "POST", body: formData });
-
-    // Simulated progress for now
     const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
-        return p + 10;
-      });
-    }, 400);
+      setProgress((p) => (p >= 85 ? 85 : p + 5));
+    }, 800);
 
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      files.forEach((f) => formData.append("cvs", f.file));
+      formData.append("jobDescription", jobDescription);
+
+      const res = await fetch("/api/analyze", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Analysis failed");
+      }
+
       clearInterval(interval);
       setProgress(100);
+      setResults(data.results);
+      setJobId(data.job_id);
+      toast.success(`Analysis complete — ${data.results.length} candidates ranked`);
+    } catch (err) {
+      clearInterval(interval);
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
       setIsAnalyzing(false);
-      toast.success("Analysis complete! (placeholder)");
-    }, 5000);
+    }
   }
 
   return (
@@ -265,21 +275,25 @@ export function UploadTool() {
           </CardContent>
         </Card>
 
-        {/* Results placeholder */}
+        {/* Results */}
         <Card className="flex-1">
           <CardHeader>
             <CardTitle>Results</CardTitle>
             <CardDescription>Ranked candidates will appear here</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                <Sparkles className="h-6 w-6 text-muted-foreground" />
+            {results.length > 0 ? (
+              <ResultsTable results={results} jobId={jobId} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Sparkles className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Upload CVs and a job description, then click &quot;Analyse &amp; Match&quot; to see ranked results.
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Upload CVs and a job description, then click &quot;Analyse &amp; Match&quot; to see ranked results.
-              </p>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
