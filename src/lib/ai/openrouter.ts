@@ -9,4 +9,4 @@ export const openrouter = createOpenAI({
   },
 });
 
-export const DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free";
+export const DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
