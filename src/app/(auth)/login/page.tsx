@@ -32,9 +32,8 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const supabase = createClient();
-
   async function onSubmit(values: LoginFormValues) {
+    const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
@@ -56,6 +55,7 @@ export default function LoginPage() {
       return;
     }
     setSendingMagic(true);
+    const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },

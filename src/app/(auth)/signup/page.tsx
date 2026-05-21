@@ -28,9 +28,8 @@ export default function SignupPage() {
     resolver: zodResolver(signupSchema),
   });
 
-  const supabase = createClient();
-
   async function onSubmit(values: SignupFormValues) {
+    const supabase = createClient();
     const { error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,

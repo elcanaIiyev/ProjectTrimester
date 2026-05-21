@@ -43,7 +43,6 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
 
   const initials = user.user_metadata?.full_name
     ? user.user_metadata.full_name
@@ -55,6 +54,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     : user.email?.[0]?.toUpperCase() ?? "U";
 
   async function handleSignOut() {
+    const supabase = createClient();
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("Failed to sign out");
