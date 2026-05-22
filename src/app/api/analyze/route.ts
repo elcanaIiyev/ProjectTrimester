@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { extractTextFromPDFs } from "@/lib/pdf/extract";
 import { analyzeCVsAgainstJob } from "@/lib/ai/analyze";
 
@@ -59,7 +60,8 @@ export async function POST(request: Request) {
 
   const rankedResults = await analyzeCVsAgainstJob(extractedCVs, jobDescription);
 
-  await supabase.from("profiles").upsert(
+  const adminClient = createAdminClient();
+  await adminClient.from("profiles").upsert(
     {
       id: user.id,
       email: user.email,
