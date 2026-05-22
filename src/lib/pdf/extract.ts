@@ -1,3 +1,5 @@
+import { getDocumentProxy, extractText } from "unpdf";
+
 export interface ExtractedCV {
   fileName: string;
   text: string;
@@ -9,22 +11,12 @@ export async function extractTextFromPDF(
   buffer: Buffer,
   fileName: string
 ): Promise<ExtractedCV> {
-  if (typeof globalThis.DOMMatrix === "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).DOMMatrix = class DOMMatrix {
-      constructor(_init?: string | number[]) {}
-      static fromMatrix() { return new (globalThis as any).DOMMatrix(); }
-      static fromFloat32Array() { return new (globalThis as any).DOMMatrix(); }
-      static fromFloat64Array() { return new (globalThis as any).DOMMatrix(); }
-    };
-  }
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: new Uint8Array(buffer), verbosity: 0 });
-  const data = await parser.getText();
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(pdf, { mergePages: true });
   return {
     fileName,
-    text: data.text.trim(),
-    pageCount: 0,
+    text: (Array.isArray(text) ? text.join("\n") : text).trim(),
+    pageCount: pdf.numPages,
     rawBuffer: buffer,
   };
 }
