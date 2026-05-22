@@ -82,6 +82,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "job_description and results are required" }, { status: 400 });
     }
 
+    await supabase.from("profiles").upsert(
+      { id: user.id, email: user.email, full_name: user.user_metadata?.full_name ?? null },
+      { onConflict: "id", ignoreDuplicates: true }
+    );
+
     const { data: job, error: jobError } = await supabase
       .from("analysis_jobs")
       .insert({

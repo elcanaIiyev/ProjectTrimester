@@ -59,6 +59,15 @@ export async function POST(request: Request) {
 
   const rankedResults = await analyzeCVsAgainstJob(extractedCVs, jobDescription);
 
+  await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name ?? null,
+    },
+    { onConflict: "id", ignoreDuplicates: true }
+  );
+
   const { data: job, error: jobError } = await supabase
     .from("analysis_jobs")
     .insert({
