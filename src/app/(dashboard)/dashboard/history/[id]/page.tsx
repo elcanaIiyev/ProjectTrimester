@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ResultsTable } from "@/components/results/results-table";
 import { ArrowLeft, Calendar, FileText } from "lucide-react";
+import { DeleteJobButton } from "@/components/history/delete-job-button";
 import type { CVAnalysisResult } from "@/lib/ai/analyze";
 
 interface Props {
@@ -67,7 +68,10 @@ export default async function HistoryDetailPage({ params }: Props) {
           Back
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold line-clamp-2">{displayTitle}</h1>
+          <div className="flex items-start justify-between gap-2">
+            <h1 className="text-2xl font-bold line-clamp-2">{displayTitle}</h1>
+            <DeleteJobButton jobId={job.id} redirectAfter />
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />

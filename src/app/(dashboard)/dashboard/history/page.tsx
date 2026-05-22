@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Upload, FileText, Trophy, Calendar, ArrowRight } from "lucide-react";
+import { DeleteJobButton } from "@/components/history/delete-job-button";
 
 export default async function HistoryPage() {
   const supabase = await createClient();
@@ -98,9 +99,12 @@ export default async function HistoryPage() {
                         })}
                       </CardDescription>
                     </div>
-                    <Badge variant={job.status === "completed" ? "default" : "secondary"}>
-                      {job.status}
-                    </Badge>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant={job.status === "completed" ? "default" : "secondary"}>
+                        {job.status}
+                      </Badge>
+                      <DeleteJobButton jobId={job.id} />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
