@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { openrouter, DEFAULT_MODEL } from "./openrouter";
+import { openrouter, FREE_MODEL_FALLBACKS } from "./openrouter";
 import type { ExtractedCV } from "@/lib/pdf/extract";
 
 export interface CVAnalysisResult {
@@ -60,11 +60,26 @@ Respond with ONLY a valid JSON object in this exact format (no markdown, no expl
   ]
 }`;
 
-  const { text } = await generateText({
-    model: openrouter(DEFAULT_MODEL),
-    prompt,
-    maxRetries: 2,
-  });
+  let text = "";
+  let lastError: unknown;
+  for (const model of FREE_MODEL_FALLBACKS) {
+    try {
+      console.log(`[analyze] Trying model: ${model}`);
+      const result = await generateText({
+        model: openrouter(model),
+        prompt,
+        maxRetries: 1,
+      });
+      text = result.text;
+      console.log(`[analyze] Success with model: ${model}`);
+      break;
+    } catch (err) {
+      console.warn(`[analyze] Model ${model} failed:`, err instanceof Error ? err.message : err);
+      lastError = err;
+    }
+  }
+
+  if (!text) throw lastError ?? new Error("All models failed");
 
   const parsed = extractJSON(text) as { results: RawResult[] };
 
