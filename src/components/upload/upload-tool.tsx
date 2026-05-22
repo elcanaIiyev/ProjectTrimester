@@ -69,7 +69,12 @@ export function UploadTool() {
 
     setFiles((prev) => {
       const existingNames = new Set(prev.map((f) => f.name));
-      const unique = newFiles.filter((f) => !existingNames.has(f.name));
+      const seenInBatch = new Set<string>();
+      const unique = newFiles.filter((f) => {
+        if (existingNames.has(f.name) || seenInBatch.has(f.name)) return false;
+        seenInBatch.add(f.name);
+        return true;
+      });
       if (unique.length < newFiles.length) {
         toast.info("Duplicate files skipped.");
       }
