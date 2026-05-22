@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,17 +50,13 @@ export function DeleteJobButton({ jobId, redirectAfter = false }: DeleteJobButto
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          disabled={isDeleting}
-          onClick={(e) => e.preventDefault()}
-        >
-          <Trash2 className="h-4 w-4" />
-          <span className="sr-only">Delete analysis</span>
-        </Button>
+      <AlertDialogTrigger
+        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 text-muted-foreground hover:text-destructive")}
+        disabled={isDeleting}
+        onClick={(e) => e.preventDefault()}
+      >
+        <Trash2 className="h-4 w-4" />
+        <span className="sr-only">Delete analysis</span>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
