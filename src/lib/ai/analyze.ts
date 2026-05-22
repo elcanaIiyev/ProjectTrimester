@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { groq, GROQ_MODELS } from "./groq";
 import { openrouter, FREE_MODEL_FALLBACKS } from "./openrouter";
 import type { ExtractedCV } from "@/lib/pdf/extract";
 
@@ -62,20 +63,33 @@ Respond with ONLY a valid JSON object in this exact format (no markdown, no expl
 
   let text = "";
   let lastError: unknown;
-  for (const model of FREE_MODEL_FALLBACKS) {
+
+  for (const model of GROQ_MODELS) {
     try {
-      console.log(`[analyze] Trying model: ${model}`);
-      const result = await generateText({
-        model: openrouter(model),
-        prompt,
-        maxRetries: 1,
-      });
+      console.log(`[analyze] Trying Groq model: ${model}`);
+      const result = await generateText({ model: groq(model), prompt, maxRetries: 1 });
       text = result.text;
-      console.log(`[analyze] Success with model: ${model}`);
+      console.log(`[analyze] Success with Groq model: ${model}`);
       break;
     } catch (err) {
-      console.warn(`[analyze] Model ${model} failed:`, err instanceof Error ? err.message : err);
+      console.warn(`[analyze] Groq ${model} failed:`, err instanceof Error ? err.message : err);
       lastError = err;
+    }
+  }
+
+  if (!text) {
+    console.warn("[analyze] All Groq models failed, falling back to OpenRouter...");
+    for (const model of FREE_MODEL_FALLBACKS) {
+      try {
+        console.log(`[analyze] Trying OpenRouter model: ${model}`);
+        const result = await generateText({ model: openrouter(model), prompt, maxRetries: 1 });
+        text = result.text;
+        console.log(`[analyze] Success with OpenRouter model: ${model}`);
+        break;
+      } catch (err) {
+        console.warn(`[analyze] OpenRouter ${model} failed:`, err instanceof Error ? err.message : err);
+        lastError = err;
+      }
     }
   }
 
