@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { toast } from "sonner";
-import { Loader2, Upload, X, FileText, Sparkles, AlertCircle, RotateCcw } from "lucide-react";
+import { Loader2, Upload, X, FileText, Sparkles, AlertCircle, RotateCcw, BookmarkCheck, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +29,7 @@ export function UploadTool() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [jobDescription, setJobDescription] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [wasInterrupted, setWasInterrupted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<CVAnalysisResult[]>([]);
@@ -38,10 +39,11 @@ export function UploadTool() {
     try {
       const stored = sessionStorage.getItem(SESSION_KEY);
       if (!stored) return;
-      const parsed = JSON.parse(stored) as { status: string; results?: CVAnalysisResult[]; jobId?: string };
+      const parsed = JSON.parse(stored) as { status: string; results?: CVAnalysisResult[]; jobId?: string; jobDescription?: string };
       if (parsed.status === "complete" && parsed.results?.length) {
         setResults(parsed.results);
         setJobId(parsed.jobId);
+        if (parsed.jobDescription) setJobDescription(parsed.jobDescription);
         setProgress(100);
       } else if (parsed.status === "analyzing") {
         setWasInterrupted(true);
@@ -100,7 +102,7 @@ export function UploadTool() {
     setResults([]);
     setJobId(undefined);
     setProgress(10);
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ status: "analyzing" }));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ status: "analyzing", jobDescription }));
 
     const interval = setInterval(() => {
       setProgress((p) => (p >= 85 ? 85 : p + 5));
@@ -129,7 +131,7 @@ export function UploadTool() {
       setProgress(100);
       setResults(results);
       setJobId(data.job_id);
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ status: "complete", results, jobId: data.job_id }));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ status: "complete", results, jobId: data.job_id, jobDescription }));
       toast.success(`Analysis complete — ${results.length} candidates ranked`);
     } catch (err) {
       clearInterval(interval);
@@ -315,20 +317,61 @@ export function UploadTool() {
               <CardDescription>Ranked candidates will appear here</CardDescription>
             </div>
             {results.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 gap-1.5 text-xs text-muted-foreground"
-                onClick={() => {
-                  setResults([]);
-                  setJobId(undefined);
-                  setProgress(0);
-                  sessionStorage.removeItem(SESSION_KEY);
-                }}
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Clear
-              </Button>
+              <div className="flex items-center gap-2">
+                {jobId ? (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                    <BookmarkCheck className="h-3.5 w-3.5" />
+                    Saved
+                  </span>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    disabled={isSaving}
+                    onClick={async () => {
+                      setIsSaving(true);
+                      try {
+                        const res = await fetch("/api/history", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            job_description: jobDescription,
+                            cv_count: results.length,
+                            results,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error ?? "Save failed");
+                        setJobId(data.job_id);
+                        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ status: "complete", results, jobId: data.job_id, jobDescription }));
+                        toast.success("Saved to History");
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Failed to save");
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                  >
+                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Save to History
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-xs text-muted-foreground"
+                  onClick={() => {
+                    setResults([]);
+                    setJobId(undefined);
+                    setProgress(0);
+                    sessionStorage.removeItem(SESSION_KEY);
+                  }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+              </div>
             )}
           </CardHeader>
           <CardContent>
