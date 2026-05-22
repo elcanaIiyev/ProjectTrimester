@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { extractTextFromPDFs } from "@/lib/pdf/extract";
 import { analyzeCVsAgainstJob } from "@/lib/ai/analyze";
 
@@ -58,6 +59,16 @@ export async function POST(request: Request) {
   console.log(`[analyze] Extracted ${extractedCVs.length}/${pdfFiles.length} PDFs successfully`);
 
   const rankedResults = await analyzeCVsAgainstJob(extractedCVs, jobDescription);
+
+  const adminClient = createAdminClient();
+  await adminClient.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name ?? null,
+    },
+    { onConflict: "id", ignoreDuplicates: true }
+  );
 
   const { data: job, error: jobError } = await supabase
     .from("analysis_jobs")

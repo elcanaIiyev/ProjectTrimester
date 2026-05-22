@@ -9,4 +9,14 @@ export const openrouter = createOpenAI({
   },
 });
 
-export const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
+export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash:free";
+
+export const FREE_MODEL_FALLBACKS = [
+  "deepseek/deepseek-v4-flash:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "nousresearch/hermes-3-llama-3.1-405b:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "qwen/qwen3-coder:free",
+];
