@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Upload, FileText, Trophy, Calendar } from "lucide-react";
+import { Upload, FileText, Trophy, Calendar, ArrowRight } from "lucide-react";
 
 export default async function HistoryPage() {
   const supabase = await createClient();
@@ -79,7 +79,8 @@ export default async function HistoryPage() {
             const displayTitle = job.job_title ?? (snippet + (job.job_description.length > 120 ? "…" : ""));
 
             return (
-              <Card key={job.id} className="transition-shadow hover:shadow-md">
+              <Link key={job.id} href={`/dashboard/history/${job.id}`}>
+              <Card className="transition-all hover:shadow-md hover:border-primary/40 cursor-pointer">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -123,8 +124,14 @@ export default async function HistoryPage() {
                       </div>
                     )}
                   </div>
+                  <div className="flex justify-end pt-1">
+                    <span className="flex items-center gap-1 text-xs text-primary">
+                      View results <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
+              </Link>
             );
           })}
         </div>
