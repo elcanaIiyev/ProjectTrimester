@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { toast } from "sonner";
-import { Loader2, Upload, X, FileText, Sparkles } from "lucide-react";
+import { Loader2, Upload, X, FileText, Sparkles, AlertCircle, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,13 +23,34 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const SESSION_KEY = "betterforms_analysis";
+
 export function UploadTool() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [jobDescription, setJobDescription] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [wasInterrupted, setWasInterrupted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<CVAnalysisResult[]>([]);
   const [jobId, setJobId] = useState<string | undefined>();
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_KEY);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as { status: string; results?: CVAnalysisResult[]; jobId?: string };
+      if (parsed.status === "complete" && parsed.results?.length) {
+        setResults(parsed.results);
+        setJobId(parsed.jobId);
+        setProgress(100);
+      } else if (parsed.status === "analyzing") {
+        setWasInterrupted(true);
+        sessionStorage.removeItem(SESSION_KEY);
+      }
+    } catch {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }, []);
 
   const onDrop = useCallback((accepted: File[], rejected: FileRejection[]) => {
     if (rejected.length > 0) {
@@ -75,9 +96,11 @@ export function UploadTool() {
     }
 
     setIsAnalyzing(true);
+    setWasInterrupted(false);
     setResults([]);
     setJobId(undefined);
     setProgress(10);
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ status: "analyzing" }));
 
     const interval = setInterval(() => {
       setProgress((p) => (p >= 85 ? 85 : p + 5));
@@ -106,9 +129,11 @@ export function UploadTool() {
       setProgress(100);
       setResults(results);
       setJobId(data.job_id);
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ status: "complete", results, jobId: data.job_id }));
       toast.success(`Analysis complete — ${results.length} candidates ranked`);
     } catch (err) {
       clearInterval(interval);
+      sessionStorage.removeItem(SESSION_KEY);
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsAnalyzing(false);
@@ -284,11 +309,39 @@ export function UploadTool() {
 
         {/* Results */}
         <Card className="flex-1">
-          <CardHeader>
-            <CardTitle>Results</CardTitle>
-            <CardDescription>Ranked candidates will appear here</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>Results</CardTitle>
+              <CardDescription>Ranked candidates will appear here</CardDescription>
+            </div>
+            {results.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 gap-1.5 text-xs text-muted-foreground"
+                onClick={() => {
+                  setResults([]);
+                  setJobId(undefined);
+                  setProgress(0);
+                  sessionStorage.removeItem(SESSION_KEY);
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
+            {wasInterrupted && results.length === 0 && (
+              <div className="mb-4 flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                <p className="text-yellow-800 dark:text-yellow-300">
+                  An analysis was in progress when you left. Check{" "}
+                  <a href="/dashboard/history" className="font-medium underline underline-offset-2">History</a>{" "}
+                  to see if results were saved.
+                </p>
+              </div>
+            )}
             {results.length > 0 ? (
               <ResultsTable results={results} jobId={jobId} />
             ) : (
