@@ -53,7 +53,7 @@ export function DeleteJobButton({ jobId, redirectAfter = false }: DeleteJobButto
       <AlertDialogTrigger
         className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 text-muted-foreground hover:text-destructive")}
         disabled={isDeleting}
-        onClick={(e) => e.preventDefault()}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
       >
         <Trash2 className="h-4 w-4" />
         <span className="sr-only">Delete analysis</span>
